@@ -66,7 +66,7 @@ CREATE TABLE `messages` (
   `reply_markup` varchar(255) DEFAULT NULL,
   `edit_date` datetime DEFAULT NULL,
   `post_author` varchar(255) DEFAULT NULL,
-  `grouped_id` int(50) DEFAULT NULL,
+  `grouped_id` char(50) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3156 DEFAULT CHARSET=utf8mb4;
 

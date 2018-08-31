@@ -76,7 +76,7 @@ class Message(Base):
     reply_markup = Column(String)
     edit_date = Column(DateTime)
     post_author = Column(String)
-    grouped_id = Column(Integer)
+    grouped_id = Column(String)
 
 
 def save_add_user(message_id, channel_id, inviter_id, invitee_id, date, add_type):
