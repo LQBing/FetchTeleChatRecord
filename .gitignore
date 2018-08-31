@@ -1,7 +1,9 @@
 local_settings.py
 *.pyc
 *.session
-.idea/
+.idea
 venv/
 test.py
-invite_list.xlsx
+*.xlsx
+tatus
+__pycache__

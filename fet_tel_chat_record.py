@@ -237,10 +237,22 @@ def export_add_user_list_to_excel_by_id(channel_id=0, xlsx_file_name='invite_lis
         if add_user_list:
             wb = Workbook()
             ws = wb.active
-            ws.append(['inviter_name', 'inviter_username', 'invitee_name', 'invitee_username', 'add_type', 'date'])
+            ws.append(['inviter', 'invitee', 'add_type', 'date'])
             for item in add_user_list:
-                print(item)
-                ws.append(list(item))
+                item_list = list()
+
+                if item[1]:
+                    item_list.append(item[1])
+                else:
+                    item_list.append(item[0])
+                if item[3]:
+                    item_list.append(item[3])
+                else:
+                    item_list.append(item[2])
+                item_list.append(item[4])
+                item_list.append(item[5])
+                print(item_list)
+                ws.append(item_list)
             print('add_user_list has ' + str(len(add_user_list)) + ' records.')
             wb.save(xlsx_file_name)
             wb.close()
