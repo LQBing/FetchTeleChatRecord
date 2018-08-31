@@ -1,6 +1,4 @@
-# coding: utf-8
-from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey, Table
-from sqlalchemy.orm import relationship
+# coding: utf-8\
 from sqlalchemy.ext.declarative import declarative_base
 from telethon import TelegramClient
 from telethon.tl.types import PeerChannel, MessageActionChatJoinedByLink, MessageActionPinMessage
@@ -8,6 +6,7 @@ from telethon.tl.types import MessageActionChatAddUser, MessageActionChatDeleteU
 from settings import DBSession, StepLength, api_hash, api_id, proxy_host, proxy_port
 from openpyxl import Workbook
 import socks
+from models import User, AddUsers, Channel, Message
 
 if proxy_host and proxy_port:
     client = TelegramClient('session_name', api_id, api_hash, proxy=(socks.SOCKS5, proxy_host, proxy_port))
@@ -18,65 +17,6 @@ client.start()
 Base = declarative_base()
 
 session = DBSession()
-association_table = Table('association', Base.metadata,
-                          Column('inviter_id', Integer, ForeignKey('user.id')),
-                          Column('invitee_id', Integer, ForeignKey('user.id')),
-                          Column('channel_id', Integer, ForeignKey('channel.id'))
-                          )
-
-
-class User(Base):
-    __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True)
-    username = Column(String)
-    first_name = Column(String)
-    last_name = Column(String)
-
-
-class Channel(Base):
-    __tablename__ = 'channels'
-    id = Column(Integer, primary_key=True)
-    username = Column(String)
-
-
-class AddUsers(Base):
-    __tablename__ = 'add_users'
-
-    id = Column(Integer, primary_key=True)
-    message_id = Column(Integer)
-    channel_id = Column(Integer)
-    inviter_id = Column(Integer)
-    invitee_id = Column(Integer)
-    date = Column(DateTime)
-    add_type = Column(String)
-
-
-class Message(Base):
-    __tablename__ = 'messages'
-
-    id = Column(Integer, primary_key=True)
-    action = Column(String)
-    inviter_id = Column(Integer)
-    message_id = Column(Integer)
-    message_type = Column(String)
-    to_id = Column(Integer)
-    date = Column(DateTime)
-    message = Column(String)
-    out = Column(Boolean)
-    mentioned = Column(Boolean)
-    media_unread = Column(Boolean)
-    silent = Column(Boolean)
-    post = Column(Boolean)
-    from_id = Column(Integer)
-    fwd_from = Column(DateTime)
-    via_bot_id = Column(Integer)
-    reply_to_msg_id = Column(Integer)
-    media = Column(String)
-    reply_markup = Column(String)
-    edit_date = Column(DateTime)
-    post_author = Column(String)
-    grouped_id = Column(String)
 
 
 def save_add_user(message_id, channel_id, inviter_id, invitee_id, date, add_type):
@@ -101,7 +41,6 @@ def save_message(message):
     print(message)
     if type(message.to_id) == PeerChannel:
         to_id = message.to_id.channel_id
-        check_channel(to_id)
     else:
         to_id = message.to_id
 
@@ -118,7 +57,7 @@ def save_message(message):
                 new_message.inviter_id = message.action.inviter_id
                 save_add_user(new_message.message_id, to_id, new_message.inviter_id, message.from_id, message.date,
                               'link')
-                check_user(new_message.inviter_id)
+                get_user_entity(new_message.inviter_id)
                 new_message.action = action
             elif type(message.action) == MessageActionPinMessage:
                 action = 'MessageActionPinMessage'
@@ -128,7 +67,7 @@ def save_message(message):
                 new_message.action = action
                 for user in message.action.users:
                     save_add_user(new_message.message_id, to_id, message.from_id, user, message.date, 'manually')
-                    check_user(user)
+                    get_user_entity(user)
             elif type(message.action) == MessageActionChatDeleteUser:
                 action = 'MessageActionChatDeleteUser'
                 new_message.action = action
@@ -139,7 +78,7 @@ def save_message(message):
             else:
                 print(message.action)
                 print(message)
-                raise (AssertionError("unknown action type"))
+                raise (AssertionError("unknown action type" + type(message.action)))
 
         if to_id:
             new_message.to_id = to_id
@@ -159,7 +98,7 @@ def save_message(message):
             new_message.post = message.post
         if message.from_id:
             new_message.from_id = message.from_id
-            check_user(new_message.from_id)
+            get_user_entity(new_message.from_id)
         if 'fwd_from' in dir(message):
             if message.fwd_from:
                 new_message.fwd_from = message.fwd_from.date
@@ -189,10 +128,20 @@ def save_message(message):
         session.commit()
 
 
-def check_user(user_id):
-    exist_user = session.query(User).filter_by(id=user_id).first()
+def get_user_entity(some_id):
+    if not some_id:
+        return None
+    exist_user = None
+    if type(some_id) == int:
+        exist_user = session.query(User).filter_by(id=int(some_id)).first()
     if not exist_user:
-        user = client.get_entity(user_id)
+        exist_user = session.query(User).filter_by(username=some_id).first()
+    user_dict = dict()
+    if exist_user:
+        user_dict['id'] = exist_user.id
+        user_dict['username'] = exist_user.username
+    else:
+        user = client.get_entity(some_id)
         new_user = User()
         new_user.id = user.id
         if user.username:
@@ -205,26 +154,48 @@ def check_user(user_id):
             new_user.phone = user.phone
         session.add(new_user)
         session.commit()
+        user_dict['id'] = new_user.id
+        user_dict['username'] = new_user.username
+    return user_dict
 
 
-def check_channel(channel_id):
-    exist_channel = session.query(Channel).filter_by(id=channel_id).first()
+def get_channel_entity(some_id):
+    if not some_id:
+        return None
+    exist_channel = None
+    if type(some_id) == int:
+        exist_channel = session.query(Channel).filter_by(id=int(some_id)).first()
     if not exist_channel:
-        channel = client.get_entity(channel_id)
+        exist_channel = session.query(Channel).filter_by(name=some_id).first()
+
+    channel_dict = dict()
+    if exist_channel:
+        channel_dict['id'] = exist_channel.id
+        channel_dict['name'] = exist_channel.name
+    else:
+        channel = client.get_entity(some_id)
         new_channel = Channel()
         new_channel.id = channel.id
-        if channel.username:
-            new_channel.username = channel.username
+        print(channel)
+        new_channel.name = channel.title
         session.add(new_channel)
         session.commit()
+        channel_dict['id'] = new_channel.id
+        channel_dict['name'] = new_channel.name
+    return channel_dict
 
 
-def pull_channel_history(peer, top_id=0):
-    if not top_id:
-        history_total = client.get_messages(peer).total
-        top_id = history_total // StepLength + 1
-    for i in range(0, top_id):
-        message_history = client.get_messages(peer, min_id=0 + i, max_id=StepLength + i * StepLength)
+def pull_channel_history(peer, min_id=0, max_id=0):
+    if min_id and type(min_id) != 'int':
+        print('start id must be int')
+        return
+    if min_id and  type(max_id) != 'int':
+        print('end id must be int')
+        return
+    if not max_id:
+        max_id = client.get_messages(peer).total
+    for i in range(min_id, max_id // StepLength + 1):
+        message_history = client.get_messages(peer, min_id=min_id + i, max_id=StepLength + i * StepLength)
         for message in message_history:
             save_message(message)
 
