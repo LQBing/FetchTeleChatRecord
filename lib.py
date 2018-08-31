@@ -43,10 +43,9 @@ def save_message(message):
         to_id = message.to_id.channel_id
     else:
         to_id = message.to_id
-
     message_item = session.query(Message).filter_by(message_id=message.id, to_id=to_id).first()
-    if not message_item:
 
+    if not message_item:
         new_message = Message()
         if message.id:
             new_message.message_id = message.id
@@ -79,7 +78,6 @@ def save_message(message):
                 print(message.action)
                 print(message)
                 raise (AssertionError("unknown action type" + type(message.action)))
-
         if to_id:
             new_message.to_id = to_id
         if message.date:
@@ -132,10 +130,11 @@ def get_user_entity(some_id):
     if not some_id:
         return None
     exist_user = None
-    if type(some_id) == int:
+    if type(some_id) is int:
         exist_user = session.query(User).filter_by(id=int(some_id)).first()
-    if not exist_user:
-        exist_user = session.query(User).filter_by(username=some_id).first()
+    else:
+        if not exist_user:
+            exist_user = session.query(User).filter_by(username=some_id).first()
     user_dict = dict()
     if exist_user:
         user_dict['id'] = exist_user.id
@@ -185,16 +184,36 @@ def get_channel_entity(some_id):
     return channel_dict
 
 
-def pull_channel_history(peer, min_id=0, max_id=0):
-    if min_id and type(min_id) != 'int':
-        print('start id must be int')
-        return
-    if min_id and  type(max_id) != 'int':
-        print('end id must be int')
-        return
-    if not max_id:
+def pull_channel_history(peer, min_id=None, max_id=None):
+    if min_id:
+        if type(min_id) != 'int':
+            if type(min_id) is str:
+                if min_id.isnumeric():
+                    min_id = int(min_id)
+                else:
+                    print('start id must be int')
+                    return
+            else:
+                print('start id must be int2')
+                return
+    else:
+        min_id = 0
+
+    if max_id:
+        if type(max_id) != 'int':
+            if type(max_id) is str:
+                if max_id.isnumeric():
+                    max_id = int(max_id)
+                else:
+                    print('end id must be int')
+                    return
+            else:
+                print('end id must be int')
+                return
+    else:
         max_id = client.get_messages(peer).total
-    for i in range(min_id, max_id // StepLength + 1):
+    print('pull channel history from min id ' + str(min_id) + ' to max id ' + str(max_id))
+    for i in range(min_id // StepLength, max_id // StepLength + 1):
         message_history = client.get_messages(peer, min_id=min_id + i, max_id=StepLength + i * StepLength)
         for message in message_history:
             save_message(message)

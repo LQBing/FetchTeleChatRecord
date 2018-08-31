@@ -36,7 +36,7 @@ if __name__ == "__main__":
                 help_info(arg_list[1])
             elif len(arg_list) == 3:
                 pull_channel_history(arg_list[2])
-            elif len(arg_list) == 3:
+            elif len(arg_list) == 4:
                 pull_channel_history(arg_list[2], arg_list[3])
             else:
                 pull_channel_history(arg_list[2], arg_list[3], arg_list[4])
